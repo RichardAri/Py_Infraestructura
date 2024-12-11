@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   postgres-primary:
     image: postgres:15
@@ -8,22 +10,32 @@ services:
       POSTGRES_DB: capriccio_db
     volumes:
       - ./primary/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./primary/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
       - primary_data:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    deploy:
+      mode: replicated
+      replicas: 1  # Solo un primario
+      placement:
+        constraints: [node.role == manager]
     networks:
       - postgres-net
 
-  postgres-replica1:
+  postgres-replica:
     image: postgres:15
-    container_name: postgres-replica1
+    container_name: postgres-replica
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
     volumes:
       - ./replica/postgresql.conf:/etc/postgresql/postgresql.conf
-      - replica1_data:/var/lib/postgresql/data
-      - ./scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - replica_data:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    deploy:
+      mode: replicated
+      replicas: 3  # 3 réplicas
     depends_on:
       - postgres-primary
     networks:
@@ -37,9 +49,12 @@ services:
       POSTGRES_PASSWORD: admin
     volumes:
       - ./replica/postgresql.conf:/etc/postgresql/postgresql.conf
-      - replica2_data:/var/lib/postgresql/data
-      - ./scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - replica_data2:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    deploy:
+      mode: replicated
+      replicas: 1
     depends_on:
       - postgres-primary
     networks:
@@ -53,9 +68,12 @@ services:
       POSTGRES_PASSWORD: admin
     volumes:
       - ./replica/postgresql.conf:/etc/postgresql/postgresql.conf
-      - replica3_data:/var/lib/postgresql/data
-      - ./scripts/init_replica.sh:/docker-entrypoint-initdb.d/init_replica.sh
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - replica_data3:/var/lib/postgresql/data
     command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    deploy:
+      mode: replicated
+      replicas: 1
     depends_on:
       - postgres-primary
     networks:
@@ -68,14 +86,18 @@ services:
       - "5432:5432"
     volumes:
       - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    deploy:
+      mode: replicated
+      replicas: 1  # Un solo contenedor de HAProxy
     networks:
       - postgres-net
 
 volumes:
   primary_data:
-  replica1_data:
-  replica2_data:
-  replica3_data:
+  replica_data:
+  replica_data2:
+  replica_data3:
 
 networks:
   postgres-net:
+    driver: bridge
