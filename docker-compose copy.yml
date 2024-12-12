@@ -1,0 +1,54 @@
+services:
+  postgres_master_a:
+    image: postgres:14-alpine
+    container_name: postgres_master_a
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: capriccio_db
+    volumes:
+      - master_a_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf 
+      - ./postgresql_master_a.conf:/etc/postgresql/postgresql.conf  # Archivo de configuración unico para A
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - postgres_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-p", "5433"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432"  # Mapea puerto externo 5433 al interno 5432
+
+  postgres_master_b:
+    image: postgres:14-alpine
+    container_name: postgres_master_b
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: capriccio_db
+    volumes:
+      - master_b_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf 
+      - ./postgresql_master_b.conf:/etc/postgresql/postgresql.conf  # Archivo de configuración unico para B
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - postgres_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-p", "5434"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5434:5432"  # Mapea puerto externo 5434 al interno 5432
+
+networks:
+  postgres_network:
+    driver: bridge
+
+volumes:
+  master_a_data:
+  master_b_data:
